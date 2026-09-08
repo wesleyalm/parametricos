@@ -14,7 +14,7 @@
     <div class="container mx-auto px-4 py-8 max-w-xl">
         <header class="text-center mb-8">
             <h1 class="text-3xl font-bold text-emerald-400 mb-2">Gerador Pix</h1>
-            <p class="text-slate-400">QR Code em SVG estilizado com blocos contínuos e cantos arredondados.</p>
+            <p class="text-slate-400">QR Code em SVG estilizado com cantos arredondados.</p>
         </header>
 
         <main class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-xl">
@@ -129,14 +129,14 @@
                     if ((resultado & 0x8000) !== 0) {
                         resultado = ((resultado << 1) ^ polinomio) & 0xFFFF;
                     } else {
-                        resultado = (resultado << 1) & 0xFFFF;
+                        resultado = ((resultado << 1)) & 0xFFFF;
                     }
                 }
             }
             return resultado.toString(16).toUpperCase().padStart(4, '0');
         }
 
-        function criarSvgEstiloExato(payload) {
+        function criarSvgPerfeito(payload) {
             const qr = qrcode(0, 'M');
             qr.addData(payload);
             qr.make();
@@ -145,14 +145,17 @@
             const margin = 2;
             const size = moduleCount + (margin * 2);
             
-            let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="200" height="200" style="display:block;">`;
+            let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="300" height="300">`;
             
-            // Fundo branco total
-            svgContent += `<rect width="${size}" height="${size}" rx="1.5" fill="#ffffff"/>`;
+            // Fundo branco do QR Code com borda arredondada externa
+            svgContent += `<rect width="${size}" height="${size}" rx="2" fill="#ffffff"/>`;
 
             function isFinderPattern(r, c) {
                 return (r < 7 && c < 7) || (r < 7 && c >= moduleCount - 7) || (r >= moduleCount - 7 && c < 7);
             }
+
+            let pathFinder = "";
+            let pathModules = "";
 
             for (let row = 0; row < moduleCount; row++) {
                 for (let col = 0; col < moduleCount; col++) {
@@ -161,13 +164,23 @@
                         const y = row + margin;
 
                         if (isFinderPattern(row, col)) {
-                            svgContent += `<rect x="${x}" y="${y}" width="1" height="1" fill="#000000"/>`;
+                            pathFinder += `M ${x} ${y} h 1 v 1 h -1 z `;
                         } else {
-                            svgContent += `<rect x="${x - 0.025}" y="${y - 0.025}" width="1.05" height="1.05" rx="0.15" ry="0.15" fill="#000000"/>`;
+                            // Cria blocos individuais perfeitamente separados por um espaçamento minúsculo para manter os detalhes
+                            pathModules += `M ${x + 0.1} ${y + 0.1} h 0.8 a 0.2 0.2 0 0 1 0.2 0.2 v 0.8 a 0.2 0.2 0 0 1 -0.2 0.2 h -0.8 a 0.2 0.2 0 0 1 -0.2 -0.2 v -0.8 a 0.2 0.2 0 0 1 0.2 -0.2 z `;
                         }
                     }
                 }
             }
+
+            // Renderiza os cantos e os módulos usando paths limpos (evita blocos sólidos e bugs de renderização)
+            if (pathFinder) {
+                svgContent += `<path d="${pathFinder}" fill="#000000"/>`;
+            }
+            if (pathModules) {
+                svgContent += `<path d="${pathModules}" fill="#000000"/>`;
+            }
+
             svgContent += `</svg>`;
             return svgContent;
         }
@@ -193,7 +206,7 @@
             pixPayloadTextarea.value = payload;
             resultadoDiv.classList.remove('hidden');
 
-            svgStringGlobal = criarSvgEstiloExato(payload);
+            svgStringGlobal = criarSvgPerfeito(payload);
             previewContainer.innerHTML = svgStringGlobal;
 
             resultadoDiv.scrollIntoView({ behavior: 'smooth' });
@@ -207,7 +220,7 @@
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'qrcode-pix-estilo-bloco.svg';
+            a.download = 'qrcode-pix-detalhado.svg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
