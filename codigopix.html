@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de QR Code Pix - SVG Limpo 3D</title>
-    <!-- Tailwind CSS -->
+    <title>Gerador de QR Code Pix</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- qrcode-generator -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
@@ -14,7 +12,7 @@
     <div class="container mx-auto px-4 py-8 max-w-xl">
         <header class="text-center mb-8">
             <h1 class="text-3xl font-bold text-emerald-400 mb-2">Gerador Pix</h1>
-            <p class="text-slate-400">QR Code em SVG com malha unificada para Impressão 3D.</p>
+            <p class="text-slate-400">QR Code em SVG unificado para Impressão 3D (40x40mm).</p>
         </header>
 
         <main class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-xl">
@@ -48,16 +46,12 @@
                 </button>
             </form>
 
-            <!-- Área de Resultado e Pré-visualização -->
             <div id="resultado" class="hidden mt-8 pt-6 border-t border-slate-700 text-center space-y-4">
-                
-                <!-- Tela de Visualização -->
                 <div>
                     <h3 class="text-sm font-medium mb-2 text-slate-400">Pré-visualização do SVG:</h3>
                     <div id="previewContainer" class="flex justify-center bg-slate-950 p-4 rounded-xl inline-block mx-auto shadow-md border border-slate-700"></div>
                 </div>
                 
-                <!-- Botão Único para Baixar SVG -->
                 <div>
                     <button id="btnBaixarSvg" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3 px-4 rounded-lg transition-colors cursor-pointer">
                         Baixar SVG Limpo (40x40mm)
@@ -65,7 +59,7 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium mb-1 text-slate-400">Pix Copia e Cola:</label>
+                    <label class="block text-sm font-medium mb-1 text-slate-400" for="pixPayload">Pix Copia e Cola:</label>
                     <textarea id="pixPayload" readonly rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 font-mono focus:outline-none"></textarea>
                 </div>
 
@@ -84,10 +78,12 @@
         function gerarPayloadPix(chave, nome, cidade, valor) {
             function formatField(id, value) {
                 const len = value.length.toString().padStart(2, '0');
-                return `${id}${len}${value}`;
+                return id + len + value;
             }
 
-            const normalizar = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+            const normalizar = function(str) {
+                return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+            };
 
             nome = normalizar(nome).substring(0, 25) || "RECEBEDOR";
             cidade = normalizar(cidade).substring(0, 15) || "BRASIL";
@@ -129,7 +125,7 @@
                     if ((resultado & 0x8000) !== 0) {
                         resultado = ((resultado << 1) ^ polinomio) & 0xFFFF;
                     } else {
-                        resultado = ((resultado << 1)) & 0xFFFF;
+                        resultado = (resultado << 1) & 0xFFFF;
                     }
                 }
             }
@@ -145,8 +141,7 @@
             const margin = 2;
             const size = moduleCount + (margin * 2);
             
-            // Configura o SVG estritamente com as dimensões de 40mm x 40mm para o arquivo final
-            let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="40mm" height="40mm">`;
+            let svgContent = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + size + ' ' + size + '" width="40mm" height="40mm">';
             
             function isFinderPattern(r, c) {
                 return (r < 7 && c < 7) || (r < 7 && c >= moduleCount - 7) || (r >= moduleCount - 7 && c < 7);
@@ -161,17 +156,16 @@
                         const y = row + margin;
 
                         if (isFinderPattern(row, col)) {
-                            pathData += `M ${x} ${y} h 1 v 1 h -1 z `;
+                            pathData += "M " + x + " " + y + " h 1 v 1 h -1 z ";
                         } else {
-                            // Conecta perfeitamente os módulos vizinhos criando um vetor limpo contínuo
-                            pathData += `M ${x - 0.02} ${y - 0.02} h 1.04 v 1.04 h -1.04 z `;
+                            pathData += "M " + (x - 0.02) + " " + (y - 0.02) + " h 1.04 v 1.04 h -1.04 z ";
                         }
                     }
                 }
             }
 
-            svgContent += `<path d="${pathData}" fill="#000000"/>`;
-            svgContent += `</svg>`;
+            svgContent += '<path d="' + pathData + '" fill="#000000"/>';
+            svgContent += '</svg>';
             return svgContent;
         }
 
@@ -219,11 +213,11 @@
 
         btnCopiar.addEventListener('click', function() {
             pixPayloadTextarea.select();
-            navigator.clipboard.writeText(pixPayloadTextarea.value).then(() => {
+            navigator.clipboard.writeText(pixPayloadTextarea.value).then(function() {
                 btnCopiar.textContent = "Código Copiado!";
                 btnCopiar.classList.remove('bg-slate-700', 'hover:bg-slate-600');
                 btnCopiar.classList.add('bg-emerald-600', 'text-white');
-                setTimeout(() => {
+                setTimeout(function() {
                     btnCopiar.textContent = "Copiar Código Pix";
                     btnCopiar.classList.remove('bg-emerald-600', 'text-white');
                     btnCopiar.classList.add('bg-slate-700', 'hover:bg-slate-600');
