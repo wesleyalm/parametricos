@@ -14,7 +14,7 @@
     <div class="container mx-auto px-4 py-8 max-w-xl">
         <header class="text-center mb-8">
             <h1 class="text-3xl font-bold text-emerald-400 mb-2">Gerador Pix</h1>
-            <p class="text-slate-400">Apenas a chave é obrigatória. QR Code em SVG com cantos arredondados.</p>
+            <p class="text-slate-400">QR Code em SVG estilizado com cantos arredondados.</p>
         </header>
 
         <main class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-xl">
@@ -54,7 +54,7 @@
                 <!-- Tela de Visualização -->
                 <div>
                     <h3 class="text-sm font-medium mb-2 text-slate-400">Pré-visualização do QR Code:</h3>
-                    <div id="previewContainer" class="flex justify-center bg-white p-4 rounded-xl inline-block mx-auto shadow-md"></div>
+                    <div id="previewContainer" class="flex justify-center bg-slate-950 p-4 rounded-xl inline-block mx-auto shadow-md border border-slate-700"></div>
                 </div>
                 
                 <!-- Botão Único para Baixar SVG -->
@@ -136,7 +136,7 @@
             return resultado.toString(16).toUpperCase().padStart(4, '0');
         }
 
-        function criarSvgComCantosArredondados(payload) {
+        function criarSvgEstiloDesejado(payload) {
             const qr = qrcode(0, 'M');
             qr.addData(payload);
             qr.make();
@@ -145,15 +145,34 @@
             const margin = 2;
             const size = moduleCount + (margin * 2);
             
+            // Fundo geral branco (ou da cor do bloco principal) com bordas externas arredondadas se desejar
             let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="200" height="200" style="display:block;">`;
-            svgContent += `<rect width="${size}" height="${size}" fill="#ffffff"/>`;
+            
+            // Fundo branco total do QR code
+            svgContent += `<rect width="${size}" height="${size}" rx="1" fill="#ffffff"/>`;
+
+            // Função para verificar se a coordenada cai nos marcadores de posição dos cantos (finders)
+            function isFinderPattern(r, c) {
+                // Cantos: Superior Esquerdo (0,0), Superior Direito (0, moduleCount-7), Inferior Esquerdo (moduleCount-7, 0)
+                const inTopLeft = (r < 7 && c < 7);
+                const inTopRight = (r < 7 && c >= moduleCount - 7);
+                const inBottomLeft = (r >= moduleCount - 7 && c < 7);
+                return inTopLeft || inTopRight || inBottomLeft;
+            }
 
             for (let row = 0; row < moduleCount; row++) {
                 for (let col = 0; col < moduleCount; col++) {
                     if (qr.isDark(row, col)) {
                         const x = col + margin;
                         const y = row + margin;
-                        svgContent += `<rect x="${x}" y="${y}" width="1" height="1" rx="0.35" ry="0.35" fill="#000000"/>`;
+
+                        if (isFinderPattern(row, col)) {
+                            // Mantém os blocos dos cantos sem arredondamento interno excessivo para formar a moldura exata
+                            svgContent += `<rect x="${x}" y="${y}" width="1" height="1" fill="#000000"/>`;
+                        } else {
+                            // Aplica o arredondamento nos pontos centrais igual à sua referência
+                            svgContent += `<rect x="${x}" y="${y}" width="1" height="1" rx="0.4" ry="0.4" fill="#000000"/>`;
+                        }
                     }
                 }
             }
@@ -182,7 +201,7 @@
             pixPayloadTextarea.value = payload;
             resultadoDiv.classList.remove('hidden');
 
-            svgStringGlobal = criarSvgComCantosArredondados(payload);
+            svgStringGlobal = criarSvgEstiloDesejado(payload);
             previewContainer.innerHTML = svgStringGlobal;
 
             resultadoDiv.scrollIntoView({ behavior: 'smooth' });
@@ -196,7 +215,7 @@
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'qrcode-pix-arredondado.svg';
+            a.download = 'qrcode-pix-customizado.svg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
