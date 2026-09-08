@@ -1,4 +1,142 @@
-function criarSvgEstiloExato(payload) {
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de QR Code Pix</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- qrcode-generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <div class="container mx-auto px-4 py-8 max-w-xl">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-emerald-400 mb-2">Gerador Pix</h1>
+            <p class="text-slate-400">QR Code em SVG estilizado com blocos contínuos e cantos arredondados.</p>
+        </header>
+
+        <main class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-xl">
+            <form id="pixForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1" for="chave">Chave Pix <span class="text-emerald-400">*</span></label>
+                    <input type="text" id="chave" required placeholder="CPF, E-mail, Telefone, CNPJ ou Chave Aleatória" 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1" for="nome">Nome do Beneficiário <span class="text-slate-500 text-xs">(Opcional)</span></label>
+                    <input type="text" id="nome" placeholder="Ex: Recebedor" 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1" for="cidade">Cidade <span class="text-slate-500 text-xs">(Opcional)</span></label>
+                    <input type="text" id="cidade" placeholder="Ex: Brasil" 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1" for="valor">Valor <span class="text-slate-500 text-xs">(Opcional)</span></label>
+                    <input type="number" id="valor" step="0.01" min="0" placeholder="0.00" 
+                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 focus:outline-none focus:border-emerald-500">
+                </div>
+
+                <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-3 rounded-lg transition-colors cursor-pointer">
+                    Gerar QR Code Pix
+                </button>
+            </form>
+
+            <!-- Área de Resultado e Pré-visualização -->
+            <div id="resultado" class="hidden mt-8 pt-6 border-t border-slate-700 text-center space-y-4">
+                
+                <!-- Tela de Visualização -->
+                <div>
+                    <h3 class="text-sm font-medium mb-2 text-slate-400">Pré-visualização do QR Code:</h3>
+                    <div id="previewContainer" class="flex justify-center bg-slate-950 p-4 rounded-xl inline-block mx-auto shadow-md border border-slate-700"></div>
+                </div>
+                
+                <!-- Botão Único para Baixar SVG -->
+                <div>
+                    <button id="btnBaixarSvg" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3 px-4 rounded-lg transition-colors cursor-pointer">
+                        Baixar QR Code em SVG
+                    </button>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-slate-400">Pix Copia e Cola:</label>
+                    <textarea id="pixPayload" readonly rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 text-xs text-slate-300 font-mono focus:outline-none"></textarea>
+                </div>
+
+                <button id="btnCopiar" class="bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium px-6 py-2 rounded-lg transition-colors w-full cursor-pointer">
+                    Copiar Código Pix
+                </button>
+            </div>
+        </main>
+    </div>
+
+    <footer class="text-center py-4 text-xs text-slate-500">
+        Desenvolvido para uso livre no GitHub Pages.
+    </footer>
+
+    <script>
+        function gerarPayloadPix(chave, nome, cidade, valor) {
+            function formatField(id, value) {
+                const len = value.length.toString().padStart(2, '0');
+                return `${id}${len}${value}`;
+            }
+
+            const normalizar = (str) => str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : "";
+
+            nome = normalizar(nome).substring(0, 25) || "RECEBEDOR";
+            cidade = normalizar(cidade).substring(0, 15) || "BRASIL";
+
+            let payloadMerchantAccount = 
+                formatField('00', 'br.gov.bcb.pix') + 
+                formatField('01', chave);
+
+            let payloadData = 
+                formatField('00', '01') +
+                formatField('01', payloadMerchantAccount) +
+                formatField('52', '0000') +
+                formatField('53', '986');
+
+            if (valor && parseFloat(valor) > 0) {
+                payloadData += formatField('54', parseFloat(valor).toFixed(2));
+            }
+
+            payloadData += 
+                formatField('58', 'BR') +
+                formatField('59', nome) +
+                formatField('60', cidade) +
+                formatField('62', formatField('05', '***'));
+
+            let payloadWithoutCRC = payloadData + '6304';
+            let crc = calcularCRC16(payloadWithoutCRC);
+            
+            return payloadWithoutCRC + crc;
+        }
+
+        function calcularCRC16(payload) {
+            let polinomio = 0x1021;
+            let resultado = 0xFFFF;
+
+            for (let i = 0; i < payload.length; i++) {
+                let c = payload.charCodeAt(i);
+                resultado ^= (c << 8);
+                for (let j = 0; j < 8; j++) {
+                    if ((resultado & 0x8000) !== 0) {
+                        resultado = ((resultado << 1) ^ polinomio) & 0xFFFF;
+                    } else {
+                        resultado = (resultado << 1) & 0xFFFF;
+                    }
+                }
+            }
+            return resultado.toString(16).toUpperCase().padStart(4, '0');
+        }
+
+        function criarSvgEstiloExato(payload) {
             const qr = qrcode(0, 'M');
             qr.addData(payload);
             qr.make();
@@ -25,7 +163,6 @@ function criarSvgEstiloExato(payload) {
                         if (isFinderPattern(row, col)) {
                             svgContent += `<rect x="${x}" y="${y}" width="1" height="1" fill="#000000"/>`;
                         } else {
-                            // Usamos 1.05 de largura/altura para os blocos se unirem, e um arredondamento sutil de 0.15
                             svgContent += `<rect x="${x - 0.025}" y="${y - 0.025}" width="1.05" height="1.05" rx="0.15" ry="0.15" fill="#000000"/>`;
                         }
                     }
@@ -34,3 +171,62 @@ function criarSvgEstiloExato(payload) {
             svgContent += `</svg>`;
             return svgContent;
         }
+
+        const form = document.getElementById('pixForm');
+        const resultadoDiv = document.getElementById('resultado');
+        const previewContainer = document.getElementById('previewContainer');
+        const pixPayloadTextarea = document.getElementById('pixPayload');
+        const btnCopiar = document.getElementById('btnCopiar');
+        const btnBaixarSvg = document.getElementById('btnBaixarSvg');
+
+        let svgStringGlobal = "";
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const chave = document.getElementById('chave').value.trim();
+            const nome = document.getElementById('nome').value.trim();
+            const cidade = document.getElementById('cidade').value.trim();
+            const valor = document.getElementById('valor').value.trim();
+
+            const payload = gerarPayloadPix(chave, nome, cidade, valor);
+            pixPayloadTextarea.value = payload;
+            resultadoDiv.classList.remove('hidden');
+
+            svgStringGlobal = criarSvgEstiloExato(payload);
+            previewContainer.innerHTML = svgStringGlobal;
+
+            resultadoDiv.scrollIntoView({ behavior: 'smooth' });
+        });
+
+        btnBaixarSvg.addEventListener('click', function() {
+            if (!svgStringGlobal) return;
+
+            const blob = new Blob([svgStringGlobal], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'qrcode-pix-estilo-bloco.svg';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        btnCopiar.addEventListener('click', function() {
+            pixPayloadTextarea.select();
+            navigator.clipboard.writeText(pixPayloadTextarea.value).then(() => {
+                btnCopiar.textContent = "Código Copiado!";
+                btnCopiar.classList.remove('bg-slate-700', 'hover:bg-slate-600');
+                btnCopiar.classList.add('bg-emerald-600', 'text-white');
+                setTimeout(() => {
+                    btnCopiar.textContent = "Copiar Código Pix";
+                    btnCopiar.classList.remove('bg-emerald-600', 'text-white');
+                    btnCopiar.classList.add('bg-slate-700', 'hover:bg-slate-600');
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
