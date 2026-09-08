@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerador de QR Code Pix - Impressão 3D</title>
+    <title>Gerador de QR Code Pix - SVG Limpo 3D</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- qrcode-generator -->
@@ -14,7 +14,7 @@
     <div class="container mx-auto px-4 py-8 max-w-xl">
         <header class="text-center mb-8">
             <h1 class="text-3xl font-bold text-emerald-400 mb-2">Gerador Pix</h1>
-            <p class="text-slate-400">QR Code em SVG com furos vazados otimizado para Impressão 3D.</p>
+            <p class="text-slate-400">QR Code em SVG com malha unificada para Impressão 3D.</p>
         </header>
 
         <main class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-xl">
@@ -53,14 +53,14 @@
                 
                 <!-- Tela de Visualização -->
                 <div>
-                    <h3 class="text-sm font-medium mb-2 text-slate-400">Pré-visualização do QR Code (Placa com furos):</h3>
+                    <h3 class="text-sm font-medium mb-2 text-slate-400">Pré-visualização do SVG:</h3>
                     <div id="previewContainer" class="flex justify-center bg-slate-950 p-4 rounded-xl inline-block mx-auto shadow-md border border-slate-700"></div>
                 </div>
                 
                 <!-- Botão Único para Baixar SVG -->
                 <div>
                     <button id="btnBaixarSvg" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3 px-4 rounded-lg transition-colors cursor-pointer">
-                        Baixar SVG Vazado (40x40mm)
+                        Baixar SVG Limpo (40x40mm)
                     </button>
                 </div>
 
@@ -136,7 +136,7 @@
             return resultado.toString(16).toUpperCase().padStart(4, '0');
         }
 
-        function criarSvgVazado3D(payload) {
+        function criarSvgVetorLimpo(payload) {
             const qr = qrcode(0, 'M');
             qr.addData(payload);
             qr.make();
@@ -145,16 +145,14 @@
             const margin = 2;
             const size = moduleCount + (margin * 2);
             
-            // Define o SVG exatamente com dimensões físicas em 40x40mm para softwares 3D
+            // Configura o SVG estritamente com as dimensões de 40mm x 40mm para o arquivo final
             let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="40mm" height="40mm">`;
             
-            // Construção do caminho principal: o retângulo externo arredondado da placa (sentido horário)
-            // e os furos internos (sentido anti-horário ou via fill-rule evenodd)
-            let pathData = `M 1.5 0 h ${size - 3} a 1.5 1.5 0 0 1 1.5 1.5 v ${size - 3} a 1.5 1.5 0 0 1 -1.5 1.5 h ${-(size - 3)} a 1.5 1.5 0 0 1 -1.5 -1.5 v ${-(size - 3)} a 1.5 1.5 0 0 1 1.5 -1.5 z `;
-
             function isFinderPattern(r, c) {
                 return (r < 7 && c < 7) || (r < 7 && c >= moduleCount - 7) || (r >= moduleCount - 7 && c < 7);
             }
+
+            let pathData = "";
 
             for (let row = 0; row < moduleCount; row++) {
                 for (let col = 0; col < moduleCount; col++) {
@@ -163,18 +161,16 @@
                         const y = row + margin;
 
                         if (isFinderPattern(row, col)) {
-                            // Furo quadrado perfeito correspondente aos cantos pretos
                             pathData += `M ${x} ${y} h 1 v 1 h -1 z `;
                         } else {
-                            // Furo com cantos arredondados correspondente aos pontos pretos centrais
-                            pathData += `M ${x + 0.15} ${y} h 0.7 a 0.15 0.15 0 0 1 0.15 0.15 v 0.7 a 0.15 0.15 0 0 1 -0.15 0.15 h -0.7 a 0.15 0.15 0 0 1 -0.15 -0.15 v -0.7 a 0.15 0.15 0 0 1 0.15 -0.15 z `;
+                            // Conecta perfeitamente os módulos vizinhos criando um vetor limpo contínuo
+                            pathData += `M ${x - 0.02} ${y - 0.02} h 1.04 v 1.04 h -1.04 z `;
                         }
                     }
                 }
             }
 
-            // O uso de fill-rule="evenodd" faz com que todas as formas sobrepostas atuem exatamente como recortes/vazados na placa principal
-            svgContent += `<path d="${pathData}" fill="#000000" fill-rule="evenodd"/>`;
+            svgContent += `<path d="${pathData}" fill="#000000"/>`;
             svgContent += `</svg>`;
             return svgContent;
         }
@@ -200,7 +196,7 @@
             pixPayloadTextarea.value = payload;
             resultadoDiv.classList.remove('hidden');
 
-            svgStringGlobal = criarSvgVazado3D(payload);
+            svgStringGlobal = criarSvgVetorLimpo(payload);
             previewContainer.innerHTML = svgStringGlobal;
 
             resultadoDiv.scrollIntoView({ behavior: 'smooth' });
@@ -214,7 +210,7 @@
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'qrcode-pix-vazado-40x40.svg';
+            a.download = 'qrcode-pix-limpo-40x40.svg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
