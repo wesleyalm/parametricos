@@ -14,7 +14,7 @@
     <div class="container mx-auto px-4 py-8 max-w-xl">
         <header class="text-center mb-8">
             <h1 class="text-3xl font-bold text-emerald-400 mb-2">Gerador Pix</h1>
-            <p class="text-slate-400">QR Code em SVG estilizado com cantos arredondados.</p>
+            <p class="text-slate-400">QR Code em SVG com estilo de blocos arredondados contínuos.</p>
         </header>
 
         <main class="bg-slate-800 border border-slate-700 rounded-xl p-6 shadow-xl">
@@ -136,7 +136,7 @@
             return resultado.toString(16).toUpperCase().padStart(4, '0');
         }
 
-        function criarSvgEstiloDesejado(payload) {
+        function criarSvgEstiloExato(payload) {
             const qr = qrcode(0, 'M');
             qr.addData(payload);
             qr.make();
@@ -145,19 +145,13 @@
             const margin = 2;
             const size = moduleCount + (margin * 2);
             
-            // Fundo geral branco (ou da cor do bloco principal) com bordas externas arredondadas se desejar
             let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="200" height="200" style="display:block;">`;
             
-            // Fundo branco total do QR code
-            svgContent += `<rect width="${size}" height="${size}" rx="1" fill="#ffffff"/>`;
+            // Fundo branco total
+            svgContent += `<rect width="${size}" height="${size}" rx="1.5" fill="#ffffff"/>`;
 
-            // Função para verificar se a coordenada cai nos marcadores de posição dos cantos (finders)
             function isFinderPattern(r, c) {
-                // Cantos: Superior Esquerdo (0,0), Superior Direito (0, moduleCount-7), Inferior Esquerdo (moduleCount-7, 0)
-                const inTopLeft = (r < 7 && c < 7);
-                const inTopRight = (r < 7 && c >= moduleCount - 7);
-                const inBottomLeft = (r >= moduleCount - 7 && c < 7);
-                return inTopLeft || inTopRight || inBottomLeft;
+                return (r < 7 && c < 7) || (r < 7 && c >= moduleCount - 7) || (r >= moduleCount - 7 && c < 7);
             }
 
             for (let row = 0; row < moduleCount; row++) {
@@ -167,11 +161,11 @@
                         const y = row + margin;
 
                         if (isFinderPattern(row, col)) {
-                            // Mantém os blocos dos cantos sem arredondamento interno excessivo para formar a moldura exata
+                            // Cantos tradicionais quadrados cheios
                             svgContent += `<rect x="${x}" y="${y}" width="1" height="1" fill="#000000"/>`;
                         } else {
-                            // Aplica o arredondamento nos pontos centrais igual à sua referência
-                            svgContent += `<rect x="${x}" y="${y}" width="1" height="1" rx="0.4" ry="0.4" fill="#000000"/>`;
+                            // Blocos maiores e levemente arredondados para colar uns nos outros como na referência
+                            svgContent += `<rect x="${x}" y="${y}" width="1" height="1" rx="0.2" ry="0.2" fill="#000000"/>`;
                         }
                     }
                 }
@@ -201,7 +195,7 @@
             pixPayloadTextarea.value = payload;
             resultadoDiv.classList.remove('hidden');
 
-            svgStringGlobal = criarSvgEstiloDesejado(payload);
+            svgStringGlobal = criarSvgEstiloExato(payload);
             previewContainer.innerHTML = svgStringGlobal;
 
             resultadoDiv.scrollIntoView({ behavior: 'smooth' });
@@ -215,7 +209,7 @@
             
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'qrcode-pix-customizado.svg';
+            a.download = 'qrcode-pix-estilo-bloco.svg';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
