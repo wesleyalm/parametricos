@@ -1,8 +1,1392 @@
-<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MWfix | Gerador de chaveiros</title><style>*{box-sizing:border-box}body{margin:0;background:#171717;color:#eee;font:15px system-ui}header{padding:18px 24px;background:#222;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #333}b{color:#ff7900;font-size:26px}main{display:grid;grid-template-columns:350px 1fr;min-height:85vh}aside{padding:18px;background:#232323;overflow:auto}label{display:block;margin:12px 0 5px;color:#ccc}input,select,textarea,button{font:inherit;border:1px solid #444;border-radius:6px;padding:10px;background:#303030;color:#fff;width:100%}textarea{height:110px;resize:vertical}button{cursor:pointer;margin-top:10px;background:#ff7900;color:#111;font-weight:bold;border:0}button.secondary{background:#393939;color:white}section{padding:20px;min-width:0}canvas{width:100%;height:65vh;background:#202020;border-radius:10px;touch-action:none}.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}small{color:#aaa}#status{margin:12px 0}@media(max-width:760px){main{grid-template-columns:1fr}canvas{height:50vh}}</style><header><div><b>MWfix</b> | Gerador de chaveiros</div><small>Produção em lote</small></header><main><aside><label>Nomes (vírgula ou uma linha por nome)</label><textarea id="names">Emma</textarea><button class="secondary" id="add">+ Adicionar nome</button><label>Fonte instalada no OpenSCAD</label><select id="font"><option>Pacifico</option><option>Aladin</option><option>Archivo Black</option><option>Bangers</option><option>Bungee</option><option>Bebas Neue</option><option>Changa One</option><option>Chewy</option><option>Cookie</option><option>Courgette</option><option>Dancing Script</option><option>Lemon</option><option>Lobster</option><option>Noto Sans</option><option>Playfair Display</option><option>Poppins Black</option><option>Press Start 2P</option><option>Audiowide</option><option>DynaPuff</option><option>Lily Script One</option></select><div class="pair"><div><label>Tamanho (mm)</label><input id="size" type="number" min="5" max="50" value="16"></div><div><label>Texto (mm)</label><input id="th" type="number" min="0.2" step="0.2" value="2"></div><div><label>Base (mm)</label><input id="bh" type="number" min="0.2" step="0.2" value="3"></div><div><label>Contorno (mm)</label><input id="border" type="number" min="0.5" step="0.1" value="2"></div><div><label>Argola (mm)</label><input id="ring" type="number" min="-20" max="10" step="0.5" value="0"></div><div><label>Espaço (mm)</label><input id="gap" type="number" min="2" value="5"></div><div><label>Cor da base</label><input id="bc" type="color" value="#000000"></div><div><label>Cor do texto</label><input id="tc" type="color" value="#40e0d0"></div></div><label>Mesa</label><select id="bed"><option value="256">Bambu A1 — 256 mm</option><option value="180">Bambu A1 Mini — 180 mm</option></select><button id="generate">Gerar prévia</button><label>Exportar</label><select id="part"><option value="both">Modelo completo</option><option value="base">Somente bases</option><option value="text">Somente textos</option></select><button id="download">Baixar OpenSCAD (.scad)</button><button class="secondary" id="individual">Baixar nomes individualmente (.zip)</button><p><small>Prévia ilustrativa 2D. A geometria final e a exportação STL são feitas no OpenSCAD.</small></p></aside><section><div id="status"></div><canvas id="view"></canvas><p><small>As dimensões da prévia são aproximadas. Confira a posição da argola e o encaixe na mesa no OpenSCAD antes de imprimir.</small></p></section></main><script>
-const $=id=>document.getElementById(id);function config(){let n=$('names').value.split(/[,\n]+/).map(s=>s.trim()).filter(Boolean);let c={n,font:$('font').value, size:+$('size').value,th:+$('th').value,bh:+$('bh').value,border:+$('border').value,ring:+$('ring').value,gap:+$('gap').value,bed:+$('bed').value,bc:$('bc').value,tc:$('tc').value};if(!n.length||['size','th','bh','border','gap'].some(k=>!Number.isFinite(c[k])||c[k]<=0)||!Number.isFinite(c.ring))throw Error('Preencha os nomes e as dimensões válidas.');return c}
-function draw(){try{let c=config(),v=$('view'),d=devicePixelRatio||1;v.width=v.clientWidth*d;v.height=v.clientHeight*d;let g=v.getContext('2d');g.scale(d,d);let w=v.clientWidth,h=v.clientHeight,k=Math.min((w-50)/c.bed,(h-50)/c.bed);g.translate((w-c.bed*k)/2,(h-c.bed*k)/2);g.scale(k,k);g.fillStyle='#404040';g.fillRect(0,0,c.bed,c.bed);g.strokeStyle='#4d4d4d';g.lineWidth=.2;for(let i=0;i<c.bed;i+=10){g.beginPath();g.moveTo(i,0);g.lineTo(i,c.bed);g.moveTo(0,i);g.lineTo(c.bed,i);g.stroke()}g.font=`${c.size*1.25}px '${c.font}', cursive`;g.textBaseline='alphabetic';let x=5,y=5,row=0,count=0,overflow=false;for(let n of c.n){let a=g.measureText(n).width+2*c.border+12+Math.abs(c.ring),b=c.size*1.6+2*c.border;if(x+a>c.bed-5){x=5;y+=row+c.gap;row=0}if(y+b>c.bed-5||a>c.bed-10){overflow=true;break}let tx=x+10+Math.abs(c.ring)+c.border,ty=y+c.size*1.25;g.lineJoin='round';g.strokeStyle=c.bc;g.lineWidth=c.border*2;g.strokeText(n,tx,ty);g.fillStyle=c.bc;g.beginPath();g.arc(tx-3+c.ring,ty-c.size/2,4,0,Math.PI*2);g.fill();g.fillStyle=c.tc;g.fillText(n,tx,ty);g.fillStyle='#404040';g.beginPath();g.arc(tx-3+c.ring,ty-c.size/2,2,0,Math.PI*2);g.fill();x+=a+c.gap;row=Math.max(row,b);count++}$('status').textContent=`${c.n.length} chaveiro(s) • ${count} na prévia da mesa${overflow?' • restante exige outra mesa ou ajuste':''}`;}catch(e){$('status').textContent=e.message}}
-const q=s=>JSON.stringify(s);function scad(c,part,names=c.n){return `// MWfix — gerador paramétrico independente\n// OpenSCAD 2021+ (textmetrics requer versão com suporte; layout usa estimativa)\n$fn=100;\nnames=${JSON.stringify(names)};\nfont=${q(c.font)};\ns=${c.size}; bh=${c.bh}; th=${c.th}; border=${c.border}; ring=${c.ring}; gap=${c.gap}; bed=${c.bed};\npart=${q(part)};\n// Espaçamento conservador; ajuste se necessário para a fonte escolhida.\nfunction width(n)=max(25,len(n)*s*1.6+2*border+20+abs(ring));\nstep_y=s*2.2+2*border+gap;\nfunction places(i=0,x=5,y=5,p=0)=i>=len(names)?[]:let(w=width(names[i]),nx=x+w>bed-5?5:x,ny=x+w>bed-5?y+step_y:y,np=ny+step_y>bed? p+1:p,fy=np>p?5:ny)concat([[nx,fy,np]],places(i+1,nx+w+gap,fy,np));\npositions=places();\nplate=0; // altere para exportar as demais mesas\nmodule glyph(n){text(n,size=s,font=font);}\nmodule backing(n){difference(){union(){offset(r=border)glyph(n);hull(){translate([-3+ring,s/2])circle(r=4);translate([2,s/2])circle(r=4);}}translate([-3+ring,s/2])circle(r=2);}}\nmodule key(n){if(part!="text")color(${q(c.bc)})linear_extrude(bh)backing(n);if(part!="base")color(${q(c.tc)})translate([0,0,bh])linear_extrude(th)glyph(n);}\nfor(i=[0:len(names)-1])if(positions[i][2]==plate)translate([positions[i][0]+10+abs(ring),positions[i][1]+border+s/2,0])key(names[i]);\necho("Mesas",positions[len(positions)-1][2]+1);\n`}
-function save(name,blob){let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}$('download').onclick=()=>{try{save('mwfix-chaveiros.scad',new Blob([scad(config(),$('part').value)],{type:'text/plain'}))}catch(e){alert(e.message)}};
-// ZIP sem compressão, sem dependências externas.
-function zip(files){let enc=new TextEncoder(),chunks=[],central=[],offset=0;const crc=a=>{let c=-1;for(let b of a){c^=b;for(let j=0;j<8;j++)c=(c>>>1)^((c&1)?0xedb88320:0)}return (c^-1)>>>0};function hdr(n){let a=new Uint8Array(n),v=new DataView(a.buffer);return [a,(o,x)=>v.setUint16(o,x,true),(o,x)=>v.setUint32(o,x,true)]}for(let [name,body] of files){let n=enc.encode(name),b=enc.encode(body),r=crc(b),[a,s,l]=hdr(30);l(0,0x04034b50);s(4,20);s(6,2048);l(14,r);l(18,b.length);l(22,b.length);s(26,n.length);chunks.push(a,n,b);let [z,t,m]=hdr(46);m(0,0x02014b50);t(4,20);t(6,20);t(8,2048);m(16,r);m(20,b.length);m(24,b.length);t(28,n.length);m(42,offset);central.push(z,n);offset+=a.length+n.length+b.length}let [e,s,l]=hdr(22);l(0,0x06054b50);s(8,files.length);s(10,files.length);l(12,central.reduce((a,b)=>a+b.length,0));l(16,offset);return new Blob([...chunks,...central,e],{type:'application/zip'})}
-$('individual').onclick=()=>{try{let c=config();save('mwfix-individuais.zip',zip(c.n.map((n,i)=>[`${i+1}-${n.replace(/[^\p{L}\p{N}_-]/gu,'_')}.scad`,scad(c,$('part').value,[n])])))}catch(e){alert(e.message)}};$('add').onclick=()=>{$('names').value+='\n';$('names').focus()};$('generate').onclick=draw;document.querySelectorAll('input,select,textarea').forEach(e=>e.addEventListener('change',draw));window.addEventListener('resize',draw);draw();</script></html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MWfix | Gerador de Chaveiros</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:#111;
+ color:#fff;
+ font-family:Arial,sans-serif;
+}
+header{
+ padding:18px 24px;
+ background:#181818;
+ border-bottom:2px solid #ff7900;
+ display:flex;
+ align-items:center;
+ gap:20px;
+}
+.logo{
+ font-size:32px;
+ font-weight:900;
+ letter-spacing:-1px;
+}
+.logo span{color:#ff7900}
+.layout{
+ display:grid;
+ grid-template-columns:330px 1fr;
+ min-height:90vh;
+}
+aside{
+ background:#1d1d1d;
+ padding:20px;
+ border-right:1px solid #333;
+}
+main{
+ padding:15px;
+ min-width:0;
+}
+h2{font-size:19px}
+h3{
+ color:#ff7900;
+ font-size:13px;
+ margin-top:24px;
+}
+label{
+ display:block;
+ color:#ccc;
+ font-size:13px;
+ margin:12px 0 6px;
+}
+input,select,textarea{
+ width:100%;
+ padding:11px;
+ background:#111;
+ color:white;
+ border:1px solid #444;
+ border-radius:6px;
+ font-size:14px;
+}
+textarea{
+ min-height:120px;
+ resize:vertical;
+}
+input[type=color]{
+ height:40px;
+ padding:3px;
+}
+.grid{
+ display:grid;
+ grid-template-columns:1fr 1fr;
+ gap:10px;
+}
+button{
+ width:100%;
+ padding:13px;
+ margin-top:10px;
+ background:#ff7900;
+ color:#111;
+ font-weight:bold;
+ border:0;
+ border-radius:6px;
+ cursor:pointer;
+}
+button:disabled{
+ opacity:.4;
+ cursor:not-allowed;
+}
+.secondary{
+ background:#353535;
+ color:#fff;
+}
+#viewer{
+ height:75vh;
+ min-height:400px;
+ background:#292929;
+ border:1px solid #444;
+ border-radius:8px;
+ overflow:hidden;
+}
+#status,#count{
+ font-size:13px;
+ color:#ff7900;
+ margin:12px 0;
+ white-space:pre-wrap;
+}
+.note{
+ font-size:12px;
+ color:#aaa;
+ line-height:1.5;
+}
+@media(max-width:760px){
+ .layout{grid-template-columns:1fr}
+ #viewer{height:55vh}
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script type="importmap">
+{
+ "imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+ }
+}
+</script>
+</head>
+
+<body>
+
+<header>
+ <div class="logo">MW<span>fix</span></div>
+ <div>Gerador de chaveiros</div>
+</header>
+
+<div class="layout">
+<aside>
+
+<h2>Personalização</h2>
+
+<label>Lista de nomes</label>
+<textarea id="names">Emma</textarea>
+
+<div id="count">1 chaveiro</div>
+
+<p class="note">
+ Um nome por linha ou separado por vírgulas.
+</p>
+
+<h3>TEXTO</h3>
+
+<label>Fonte</label>
+<select id="font"></select>
+
+<div class="grid">
+ <div>
+  <label>Tamanho (mm)</label>
+  <input id="size" type="number" value="16" min="5" step="1">
+ </div>
+ <div>
+  <label>Altura do texto</label>
+  <input id="textH" type="number" value="2" min="0.2" step="0.2">
+ </div>
+</div>
+
+<h3>BASE</h3>
+
+<div class="grid">
+ <div>
+  <label>Altura da base</label>
+  <input id="backH" type="number" value="3" min="0.2" step="0.2">
+ </div>
+ <div>
+  <label>Contorno</label>
+  <input id="border" type="number" value="2" min="0.5" step="0.1">
+ </div>
+</div>
+
+<h3>ARGOLA</h3>
+
+<label>Deslocamento da argola</label>
+<input id="ring" type="number" value="0" step="0.5">
+
+<p class="note">
+ Diâmetro externo: 8 mm.
+ Furo: 4 mm.
+</p>
+
+<h3>CORES</h3>
+
+<div class="grid">
+ <div>
+  <label>Cor da base</label>
+  <input id="backColor" type="color" value="#000000">
+ </div>
+ <div>
+  <label>Cor do texto</label>
+  <input id="textColor" type="color" value="#40e0d0">
+ </div>
+</div>
+
+<h3>MESA DE IMPRESSÃO</h3>
+
+<select id="bed">
+ <option value="256">Bambu Lab A1 — 256 mm</option>
+ <option value="180">Bambu Lab A1 Mini — 180 mm</option>
+</select>
+
+<label>Espaçamento entre peças</label>
+<input id="spacing" type="number" value="5" min="2">
+
+<button id="generate">Gerar prévia 3D</button>
+
+<button id="download" disabled>
+ Baixar 3MF
+</button>
+
+<button id="individual" class="secondary" disabled>
+ Baixar 3MF individuais (ZIP)
+</button>
+
+<button id="center" class="secondary">
+ Centralizar visualização
+</button>
+
+</aside>
+
+<main>
+ <div id="viewer"></div>
+ <div id="status">Inicializando...</div>
+
+ <p class="note">
+ Arraste para girar o modelo.
+ Use a roda do mouse para aproximar ou afastar.
+ Base e texto são componentes separados no 3MF.
+ </p>
+</main>
+</div>
+
+<script type="module">
+
+import * as THREE from "three";
+
+import {OrbitControls}
+from "three/addons/controls/OrbitControls.js";
+
+import {STLLoader}
+from "three/addons/loaders/STLLoader.js";
+
+const $=id=>document.getElementById(id);
+
+const status=message=>{
+ $("status").textContent=message;
+};
+
+const fonts={
+ "Pacifico":"pacifico/Pacifico-Regular.ttf",
+ "Aladin":"aladin/Aladin-Regular.ttf",
+ "Archivo Black":"archivoblack/ArchivoBlack-Regular.ttf",
+ "Bangers":"bangers/Bangers-Regular.ttf",
+ "Bungee":"bungee/Bungee-Regular.ttf",
+ "Bebas Neue":"bebasneue/BebasNeue-Regular.ttf",
+ "Changa One":"changaone/ChangaOne-Regular.ttf",
+ "Chewy":"chewy/Chewy-Regular.ttf",
+ "Cookie":"cookie/Cookie-Regular.ttf",
+ "Courgette":"courgette/Courgette-Regular.ttf",
+ "Dancing Script":"dancingscript/DancingScript[wght].ttf",
+ "Lemon":"lemon/Lemon-Regular.ttf",
+ "Lobster":"lobster/Lobster-Regular.ttf",
+ "Noto Sans":"notosans/NotoSans[wdth,wght].ttf",
+ "Playfair Display":"playfairdisplay/PlayfairDisplay[wght].ttf",
+ "Poppins Black":"poppins/Poppins-Black.ttf",
+ "Press Start 2P":"pressstart2p/PressStart2P-Regular.ttf",
+ "Audiowide":"audiowide/Audiowide-Regular.ttf",
+ "DynaPuff":"dynapuff/DynaPuff[wdth,wght].ttf",
+ "Lily Script One":"lilyscriptone/LilyScriptOne-Regular.ttf"
+};
+
+Object.keys(fonts).forEach(name=>{
+ const option=document.createElement("option");
+ option.value=name;
+ option.textContent=name;
+ $("font").appendChild(option);
+});
+
+$("font").value="Pacifico";
+
+function getNames(){
+ return $("names").value
+ .split(/[\n,]+/)
+ .map(n=>n.trim())
+ .filter(Boolean);
+}
+
+function invalidate(){
+ $("download").disabled=true;
+ $("individual").disabled=true;
+}
+
+document.querySelectorAll("input,select,textarea")
+.forEach(el=>el.addEventListener("input",invalidate));
+
+$("names").addEventListener("input",()=>{
+ const n=getNames().length;
+ $("count").textContent=n+
+ (n===1?" chaveiro":" chaveiros");
+});
+
+function config(){
+
+ const c={
+  names:getNames(),
+  font:$("font").value,
+  size:Number($("size").value),
+  textH:Number($("textH").value),
+  backH:Number($("backH").value),
+  border:Number($("border").value),
+  ring:Number($("ring").value),
+  backColor:$("backColor").value,
+  textColor:$("textColor").value,
+  bed:Number($("bed").value),
+  spacing:Number($("spacing").value)
+ };
+
+ if(!c.names.length)
+  throw new Error("Digite pelo menos um nome.");
+
+ for(const key of [
+  "size","textH","backH","border",
+  "bed","spacing"
+ ]){
+  if(!Number.isFinite(c[key])||c[key]<=0)
+   throw new Error("Confira as dimensões.");
+ }
+
+ if(!Number.isFinite(c.ring))
+  throw new Error("Deslocamento inválido.");
+
+ return c;
+}
+
+/*
+ GEOMETRIA ORIGINAL OPENSCAD
+ Base e texto são renderizados separadamente.
+*/
+
+function scadCode(name,c,part){
+
+ const font=c.font==="Poppins Black"
+ ? "Poppins:style=Black"
+ : c.font;
+
+ return `
+$fn=100;
+
+Your_name=${JSON.stringify(name)};
+Font=${JSON.stringify(font)};
+Font_size=${c.size};
+
+Text_height=${c.textH};
+Back_height=${c.backH};
+Border_size=${c.border};
+Ring_offset=${c.ring};
+
+Back_color="${c.backColor}";
+Text_color="${c.textColor}";
+
+${part==="base"
+ ? "genBackPlateWithHole();"
+ : "genKeychainText();"}
+
+module genBackPlateWithHole(){
+
+ difference(){
+
+  genBackPlate();
+
+  translate([
+   (-3+Ring_offset),
+   (Font_size/2),
+   -1
+  ])
+
+  cylinder(
+   h=(Back_height+2),
+   r=2
+  );
+
+ }
+
+}
+
+module genBackPlate(){
+
+ color(Back_color)
+
+ linear_extrude(Back_height){
+
+  offset(r=Border_size)
+   genText();
+
+ }
+
+ color(Back_color)
+
+ hull(){
+
+  translate([
+   (-3+Ring_offset),
+   (Font_size/2),
+   0
+  ])
+
+  cylinder(
+   h=Back_height,
+   r=4
+  );
+
+  translate([
+   2,
+   (Font_size/2),
+   0
+  ])
+
+  cylinder(
+   h=Back_height,
+   r=4
+  );
+
+ }
+
+}
+
+module genKeychainText(){
+
+ color(Text_color)
+
+ translate([0,0,Back_height])
+
+ linear_extrude(Text_height){
+
+  genText();
+
+ }
+
+}
+
+module genText(){
+
+ text(
+  Your_name,
+  size=Font_size,
+  font=Font
+ );
+
+}
+`;
+}
+
+/*
+ OPENSCAD WEBASSEMBLY
+*/
+
+const engineURL=
+ "https://cdn.jsdelivr.net/npm/openscad-wasm-prebuilt@1.2.0/+esm";
+
+let engineModule;
+
+async function loadEngine(){
+
+ if(!engineModule)
+  engineModule=await import(engineURL);
+
+ return engineModule;
+}
+
+const fontCache=new Map();
+
+async function loadFont(name){
+
+ if(fontCache.has(name))
+  return fontCache.get(name);
+
+ const url=
+ "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/"
+ +fonts[name];
+
+ const response=await fetch(url);
+
+ if(!response.ok)
+  throw new Error("Erro ao carregar a fonte "+name);
+
+ const bytes=new Uint8Array(
+  await response.arrayBuffer()
+ );
+
+ fontCache.set(name,bytes);
+
+ return bytes;
+}
+
+async function renderPart(code,fontBytes){
+
+ const module=await loadEngine();
+
+ const errors=[];
+
+ const openscad=await module.createOpenSCAD({
+  print:()=>{},
+  printErr:t=>errors.push(String(t))
+ });
+
+ const engine=openscad.getInstance();
+
+ try{
+  engine.FS.mkdir("/fonts");
+ }catch(e){}
+
+ try{
+  engine.FS.mkdir("/etc");
+ }catch(e){}
+
+ try{
+  engine.FS.mkdir("/etc/fonts");
+ }catch(e){}
+
+ engine.FS.writeFile(
+  "/fonts/custom.ttf",
+  fontBytes
+ );
+
+ const fontConfig=`
+<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+ <dir>/fonts</dir>
+ <cachedir>/tmp</cachedir>
+</fontconfig>`.trim();
+
+ engine.FS.writeFile(
+  "/etc/fonts/fonts.conf",
+  fontConfig
+ );
+
+ engine.FS.writeFile(
+  "/input.scad",
+  code
+ );
+
+ if(engine.ENV){
+  engine.ENV.FONTCONFIG_FILE=
+  "/etc/fonts/fonts.conf";
+ }
+
+ try{
+  engine.callMain([
+   "/input.scad",
+   "--export-format","binstl",
+   "-o","/output.stl"
+  ]);
+ }catch(error){
+  if(error.status!==0)
+   throw error;
+ }
+
+ let bytes;
+
+ try{
+  bytes=engine.FS.readFile("/output.stl");
+ }catch(e){
+  throw new Error(
+   "Falha na renderização: "+errors.join(" ")
+  );
+ }
+
+ if(!bytes.length)
+  throw new Error("Modelo vazio.");
+
+ return new STLLoader().parse(
+  bytes.buffer.slice(
+   bytes.byteOffset,
+   bytes.byteOffset+bytes.byteLength
+  )
+ );
+
+}
+
+/*
+ VISUALIZAÇÃO 3D
+*/
+
+const viewer=$("viewer");
+
+const scene=new THREE.Scene();
+
+scene.background=new THREE.Color("#292929");
+
+const camera=new THREE.PerspectiveCamera(
+ 45,
+ viewer.clientWidth/viewer.clientHeight,
+ 0.1,
+ 5000
+);
+
+camera.up.set(0,0,1);
+
+const renderer=new THREE.WebGLRenderer({
+ antialias:true
+});
+
+renderer.setPixelRatio(
+ Math.min(window.devicePixelRatio,2)
+);
+
+renderer.setSize(
+ viewer.clientWidth,
+ viewer.clientHeight
+);
+
+viewer.appendChild(renderer.domElement);
+
+const controls=new OrbitControls(
+ camera,
+ renderer.domElement
+);
+
+controls.enableDamping=true;
+
+scene.add(
+ new THREE.AmbientLight(0xffffff,2)
+);
+
+const light=new THREE.DirectionalLight(
+ 0xffffff,3
+);
+
+light.position.set(100,-150,250);
+
+scene.add(light);
+
+const group=new THREE.Group();
+
+scene.add(group);
+
+let grid;
+
+let models=[];
+let currentConfig=null;
+
+function updateGrid(size){
+
+ if(grid){
+  scene.remove(grid);
+  grid.geometry.dispose();
+  grid.material.dispose();
+ }
+
+ grid=new THREE.GridHelper(
+  size,
+  Math.round(size/10),
+  0x777777,
+  0x454545
+ );
+
+ grid.rotation.x=Math.PI/2;
+ grid.position.z=-0.1;
+
+ scene.add(grid);
+}
+
+function fitCamera(){
+
+ const box=new THREE.Box3()
+ .setFromObject(group);
+
+ if(box.isEmpty())
+  return;
+
+ const center=box.getCenter(
+  new THREE.Vector3()
+ );
+
+ const size=box.getSize(
+  new THREE.Vector3()
+ );
+
+ const distance=Math.max(
+  size.x,
+  size.y,
+  size.z,
+  35
+ )*1.65;
+
+ camera.position.set(
+  center.x,
+  center.y-distance*0.65,
+  center.z+distance
+ );
+
+ controls.target.copy(center);
+ controls.update();
+}
+
+$("center").onclick=fitCamera;
+
+new ResizeObserver(()=>{
+
+ const w=viewer.clientWidth;
+ const h=viewer.clientHeight;
+
+ if(!w||!h)return;
+
+ camera.aspect=w/h;
+ camera.updateProjectionMatrix();
+
+ renderer.setSize(w,h);
+
+}).observe(viewer);
+
+function animate(){
+
+ requestAnimationFrame(animate);
+
+ controls.update();
+
+ renderer.render(scene,camera);
+
+}
+
+animate();
+
+function clearScene(){
+
+ group.traverse(obj=>{
+
+  if(obj.isMesh){
+   obj.geometry.dispose();
+   obj.material.dispose();
+  }
+
+ });
+
+ group.clear();
+}
+
+/*
+ ORGANIZAÇÃO DOS CHAVEIROS
+*/
+
+function arrange(items,c){
+
+ const limit=c.bed-10;
+
+ let plate=0;
+ let x=0;
+ let y=0;
+ let rowHeight=0;
+
+ for(const item of items){
+
+  const box=new THREE.Box3()
+  .setFromBufferAttribute(
+   item.base.attributes.position
+  );
+
+  box.union(
+   new THREE.Box3()
+   .setFromBufferAttribute(
+    item.text.attributes.position
+   )
+  );
+
+  const size=box.getSize(
+   new THREE.Vector3()
+  );
+
+  if(size.x>limit||size.y>limit)
+   throw new Error(
+    item.name+" não cabe na mesa."
+   );
+
+  if(x+size.x>limit){
+
+   x=0;
+   y+=rowHeight+c.spacing;
+   rowHeight=0;
+
+  }
+
+  if(y+size.y>limit){
+
+   plate++;
+   x=0;
+   y=0;
+   rowHeight=0;
+
+  }
+
+  item.plate=plate;
+
+  item.x=x-box.min.x+5;
+  item.y=y-box.min.y+5;
+
+  x+=size.x+c.spacing;
+
+  rowHeight=Math.max(rowHeight,size.y);
+
+ }
+
+ return plate+1;
+
+}
+
+function showModels(items,c){
+
+ group.clear();
+
+ updateGrid(c.bed);
+
+ for(const item of items){
+
+  const keychain=new THREE.Group();
+
+  const base=new THREE.Mesh(
+   item.base,
+   new THREE.MeshStandardMaterial({
+    color:c.backColor,
+    roughness:0.75
+   })
+  );
+
+  const text=new THREE.Mesh(
+   item.text,
+   new THREE.MeshStandardMaterial({
+    color:c.textColor,
+    roughness:0.75
+   })
+  );
+
+  keychain.add(base,text);
+
+  keychain.position.set(
+   item.x-c.bed/2+
+   item.plate*(c.bed+25),
+
+   item.y-c.bed/2,
+
+   0
+  );
+
+  group.add(keychain);
+
+ }
+
+ if(items.length===1){
+
+  const box=new THREE.Box3()
+  .setFromObject(group);
+
+  const center=box.getCenter(
+   new THREE.Vector3()
+  );
+
+  group.children[0].position.x-=center.x;
+
+  group.children[0].position.y-=center.y;
+
+ }
+
+ fitCamera();
+
+}
+
+/*
+ GERAÇÃO EM LOTE
+*/
+
+async function generate(){
+
+ $("generate").disabled=true;
+ invalidate();
+
+ try{
+
+  const c=config();
+
+  const fontBytes=await loadFont(c.font);
+
+  await loadEngine();
+
+  const next=[];
+
+  for(let i=0;i<c.names.length;i++){
+
+   const name=c.names[i];
+
+   status(
+    "Gerando "+(i+1)+
+    " de "+c.names.length+
+    ": "+name
+   );
+
+   await new Promise(
+    resolve=>setTimeout(resolve,30)
+   );
+
+   const base=await renderPart(
+    scadCode(name,c,"base"),
+    fontBytes
+   );
+
+   const text=await renderPart(
+    scadCode(name,c,"text"),
+    fontBytes
+   );
+
+   base.computeVertexNormals();
+   text.computeVertexNormals();
+
+   next.push({
+    name,
+    base,
+    text
+   });
+
+  }
+
+  const plates=arrange(next,c);
+
+  clearScene();
+
+  models=next;
+  currentConfig=c;
+
+  showModels(models,c);
+
+  status(
+   models.length+
+   " chaveiro(s) gerado(s). "+
+   plates+" mesa(s) necessária(s)."
+  );
+
+  $("download").disabled=false;
+
+  $("individual").disabled=false;
+
+ }catch(error){
+
+  console.error(error);
+
+  status(
+   "Erro: "+error.message
+  );
+
+ }finally{
+
+  $("generate").disabled=false;
+
+ }
+
+}
+
+/*
+ EXPORTAÇÃO 3MF GENÉRICA
+ Cada chaveiro possui um objeto composto
+ com base e texto independentes.
+*/
+
+function xmlEscape(value){
+
+ return String(value)
+ .replace(/&/g,"&amp;")
+ .replace(/</g,"&lt;")
+ .replace(/>/g,"&gt;")
+ .replace(/"/g,"&quot;")
+ .replace(/'/g,"&apos;");
+
+}
+
+function number(value){
+
+ return Number(
+  value.toFixed(6)
+ ).toString();
+
+}
+
+function meshXML(geometry,id,name,colorIndex){
+
+ const g=geometry.index
+ ?geometry.toNonIndexed()
+ :geometry;
+
+ const p=g.attributes.position;
+
+ const vertices=[];
+ const triangles=[];
+ const map=new Map();
+
+ function vertex(i){
+
+  const x=number(p.getX(i));
+  const y=number(p.getY(i));
+  const z=number(p.getZ(i));
+
+  const key=x+","+y+","+z;
+
+  if(map.has(key))
+   return map.get(key);
+
+  const idx=vertices.length;
+
+  map.set(key,idx);
+
+  vertices.push(
+   `<vertex x="${x}" y="${y}" z="${z}"/>`
+  );
+
+  return idx;
+
+ }
+
+ for(let i=0;i<p.count;i+=3){
+
+  const a=vertex(i);
+  const b=vertex(i+1);
+  const c=vertex(i+2);
+
+  if(a===b||b===c||a===c)
+   continue;
+
+  triangles.push(
+   `<triangle v1="${a}" v2="${b}" v3="${c}"/>`
+  );
+
+ }
+
+ if(g!==geometry)
+  g.dispose();
+
+ return `
+<object
+ id="${id}"
+ name="${xmlEscape(name)}"
+ type="model"
+ pid="1"
+ pindex="${colorIndex}">
+ <mesh>
+  <vertices>
+   ${vertices.join("")}
+  </vertices>
+  <triangles>
+   ${triangles.join("")}
+  </triangles>
+ </mesh>
+</object>`;
+
+}
+
+async function create3MF(items,c,individual=false){
+
+ const resources=[];
+ const build=[];
+
+ let id=2;
+
+ resources.push(`
+<basematerials id="1">
+
+ <base
+  name="Base"
+  displaycolor="${c.backColor.toUpperCase()}FF"/>
+
+ <base
+  name="Texto"
+  displaycolor="${c.textColor.toUpperCase()}FF"/>
+
+</basematerials>
+`);
+
+ for(const item of items){
+
+  const baseId=id++;
+  const textId=id++;
+  const assemblyId=id++;
+
+  resources.push(
+   meshXML(
+    item.base,
+    baseId,
+    item.name+" - Base",
+    0
+   )
+  );
+
+  resources.push(
+   meshXML(
+    item.text,
+    textId,
+    item.name+" - Texto",
+    1
+   )
+  );
+
+  resources.push(`
+<object
+ id="${assemblyId}"
+ type="model"
+ name="${xmlEscape(item.name)}">
+
+ <components>
+  <component objectid="${baseId}"/>
+  <component objectid="${textId}"/>
+ </components>
+
+</object>
+`);
+
+  let x=item.x;
+  let y=item.y;
+
+  if(individual){
+
+   const box=new THREE.Box3()
+   .setFromBufferAttribute(
+    item.base.attributes.position
+   );
+
+   box.union(
+    new THREE.Box3()
+    .setFromBufferAttribute(
+     item.text.attributes.position
+    )
+   );
+
+   const center=box.getCenter(
+    new THREE.Vector3()
+   );
+
+   x=c.bed/2-center.x;
+   y=c.bed/2-center.y;
+
+  }
+
+  build.push(`
+<item
+ objectid="${assemblyId}"
+ transform="1 0 0 0 1 0 0 0 1 ${number(x)} ${number(y)} 0"/>
+`);
+
+ }
+
+ const model=`
+<?xml version="1.0" encoding="UTF-8"?>
+<model
+ unit="millimeter"
+ xml:lang="pt-BR"
+ xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+
+ <metadata name="Title">MWfix - Chaveiros</metadata>
+
+ <resources>
+  ${resources.join("")}
+ </resources>
+
+ <build>
+  ${build.join("")}
+ </build>
+
+</model>`.trim();
+
+ const zip=new JSZip();
+
+ zip.file(
+  "[Content_Types].xml",
+  `<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+
+ <Default
+  Extension="rels"
+  ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+
+ <Default
+  Extension="model"
+  ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
+
+</Types>`
+ );
+
+ zip.file(
+  "_rels/.rels",
+  `<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+
+ <Relationship
+  Id="rel0"
+  Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"
+  Target="/3D/3dmodel.model"/>
+
+</Relationships>`
+ );
+
+ zip.file(
+  "3D/3dmodel.model",
+  model
+ );
+
+ return zip.generateAsync({
+  type:"blob",
+  compression:"DEFLATE"
+ });
+
+}
+
+function saveFile(blob,name){
+
+ const url=URL.createObjectURL(blob);
+
+ const link=document.createElement("a");
+
+ link.href=url;
+ link.download=name;
+
+ document.body.appendChild(link);
+
+ link.click();
+
+ link.remove();
+
+ setTimeout(
+  ()=>URL.revokeObjectURL(url),
+  10000
+ );
+
+}
+
+function safeName(name){
+
+ return name.replace(
+  /[\\/:*?"<>|]/g,"_"
+ );
+
+}
+
+/*
+ DOWNLOAD EM LOTE
+*/
+
+$("download").onclick=async()=>{
+
+ try{
+
+  $("download").disabled=true;
+
+  status("Preparando arquivo 3MF...");
+
+  const total=Math.max(
+   ...models.map(m=>m.plate)
+  )+1;
+
+  if(total===1){
+
+   const blob=await create3MF(
+    models,
+    currentConfig,
+    models.length===1
+   );
+
+   saveFile(
+    blob,
+    "MWfix-Chaveiros.3mf"
+   );
+
+  }else{
+
+   const zip=new JSZip();
+
+   for(let i=0;i<total;i++){
+
+    const items=models.filter(
+     m=>m.plate===i
+    );
+
+    const blob=await create3MF(
+     items,
+     currentConfig
+    );
+
+    zip.file(
+     "MWfix-Mesa-"+(i+1)+".3mf",
+     blob
+    );
+
+   }
+
+   saveFile(
+    await zip.generateAsync({
+     type:"blob"
+    }),
+    "MWfix-Mesas.zip"
+   );
+
+  }
+
+  status("Exportação concluída.");
+
+ }catch(error){
+
+  status("Erro: "+error.message);
+
+ }finally{
+
+  $("download").disabled=false;
+
+ }
+
+};
+
+/*
+ DOWNLOAD INDIVIDUAL
+*/
+
+$("individual").onclick=async()=>{
+
+ try{
+
+  $("individual").disabled=true;
+
+  const zip=new JSZip();
+
+  for(let i=0;i<models.length;i++){
+
+   const item=models[i];
+
+   status(
+    "Exportando "+(i+1)+
+    " de "+models.length
+   );
+
+   const blob=await create3MF(
+    [item],
+    currentConfig,
+    true
+   );
+
+   zip.file(
+    (i+1)+"-"+safeName(item.name)+".3mf",
+    blob
+   );
+
+  }
+
+  saveFile(
+   await zip.generateAsync({
+    type:"blob"
+   }),
+   "MWfix-Chaveiros-Individuais.zip"
+  );
+
+  status("Exportação concluída.");
+
+ }catch(error){
+
+  status("Erro: "+error.message);
+
+ }finally{
+
+  $("individual").disabled=false;
+
+ }
+
+};
+
+$("generate").onclick=generate;
+
+updateGrid(256);
+
+camera.position.set(0,-100,150);
+
+controls.update();
+
+generate();
+
+</script>
+
+</body>
+</html>
